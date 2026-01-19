@@ -91,3 +91,29 @@ func getPages[T any](path string, target *T) (next string, err error) {
 
 	return next, nil
 }
+
+// Add this to services/core.go
+
+func patch(path string, body interface{}) error {
+	// Marshal body to JSON
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	// Create Reader
+	bodyReader := bytes.NewReader(jsonBody)
+
+	// Make Request
+	resp, err := client.Request("PATCH", path, bodyReader)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+
+	return api.HandleHTTPError(resp)
+}
