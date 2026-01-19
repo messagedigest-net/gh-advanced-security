@@ -1,0 +1,8 @@
+{
+  "output": {
+    "filePath": "project-context.txt",
+    "style": "xml" 
+  },
+  "include": ["**/*.go", "go.mod", "go.sum"],
+  "ignore": ["vendor/", "bin/"]
+}
