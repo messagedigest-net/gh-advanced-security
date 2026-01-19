@@ -31,11 +31,7 @@ var pushProtectionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
-		if len(args) == 0 {
-			// Prompt logic here if you want...
-			fmt.Println("Please specify an Organization or Owner/Repo")
-			os.Exit(1)
-		}
+		args = services.GetTarget(args, "For which org or repo do you want to enable Push Protection?")
 
 		target := args[0]
 
@@ -86,10 +82,7 @@ var secretScanningEnableCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
-		if len(args) == 0 {
-			fmt.Println("Please specify an Organization or Owner/Repo")
-			os.Exit(1)
-		}
+		args = services.GetTarget(args, "For which org or repo do you want to enable Secret Scanning?")
 
 		target := args[0]
 
