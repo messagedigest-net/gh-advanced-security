@@ -27,59 +27,67 @@ func initRestClient() {
 	}
 }
 
+// jsonLister remains using interface{} as json.Marshal accepts any type
 func jsonLister(object interface{}) error {
 	jsonObject, err := json.MarshalIndent(object, "", "\t")
 	if err != nil {
 		return err
 	}
 
-	jsonpretty.Format(terminal.Out(), bytes.NewReader(jsonObject), "\t", terminal.IsColorEnabled())
-	//fmt.Println(string(jsonObject))
+	// Ensure terminal is initialized (from terminal.go)
+	t := GetTerminal()
+	jsonpretty.Format(t.Out(), bytes.NewReader(jsonObject), "\t", t.IsColorEnabled())
 	return nil
 }
 
-func getPages(path string, target interface{}) (next string, err error) {
+// getPages is now Generic [T any].
+// T represents the shape of the data you expect (e.g., []model.Repository).
+// We pass *T so we can unmarshal directly into it.
+func getPages[T any](path string, target *T) (next string, err error) {
 	resp, err := client.Request("GET", path, nil)
 	if err != nil {
-		return next, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
 	if !success {
-		err = api.HandleHTTPError(resp)
-		return next, err
+		return "", api.HandleHTTPError(resp)
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return next, err
+		return "", nil
 	}
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return next, err
+		return "", err
 	}
 
-	err = json.Unmarshal(b, &target)
+	// Type-safe unmarshal
+	err = json.Unmarshal(b, target)
 	if err != nil {
-		return next, err
+		return "", err
 	}
 
+	// Robust Link Header Parsing
 	linkHeader, ok := resp.Header["Link"]
-
 	if ok {
 		links := strings.Split(linkHeader[0], ",")
 		for _, v := range links {
 			parts := strings.Split(v, ";")
-			if strings.Compare(parts[1], " rel=\"next\"") == 0 {
-				next = strings.TrimSpace(parts[0])
-				next, _ = strings.CutPrefix(next, "<")
-				next, _ = strings.CutSuffix(next, ">")
-
-				break
+			if len(parts) > 1 {
+				// Trim spaces to handle " rel="next"" vs "rel="next""
+				rel := strings.TrimSpace(parts[1])
+				if rel == "rel=\"next\"" {
+					next = strings.TrimSpace(parts[0])
+					next, _ = strings.CutPrefix(next, "<")
+					next, _ = strings.CutSuffix(next, ">")
+					break
+				}
 			}
 		}
 	}
 
-	return next, err
+	return next, nil
 }
