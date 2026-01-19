@@ -75,8 +75,6 @@ func enabledOrDisabled(b bool) string {
 
 func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle string) {
 
-	sort.Sort(ByCommandName(subCmds))
-
 	GetPrompt()
 
 	subCommands := make(map[string]*cobra.Command)
@@ -86,7 +84,8 @@ func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle strin
 	}
 
 	listOptions := maps.Keys(subCommands)
-	fmt.Println(listOptions)
+
+	sort.Strings(listOptions)
 
 	option, err := prompt.Select(promptTitle, "", listOptions)
 	if err != nil {
@@ -94,7 +93,6 @@ func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle strin
 	}
 	choosen := listOptions[option]
 	subCommands[choosen].Run(subCommands[choosen], args)
-
 }
 
 func GetTarget(args []string, message string) []string {
