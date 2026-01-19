@@ -72,7 +72,60 @@ var pushProtectionCmd = &cobra.Command{
 	},
 }
 
+var secretScanningEnableCmd = &cobra.Command{
+	Use:     "secret-scanning",
+	Aliases: []string{"ss"},
+	Short:   "Enable Secret Scanning",
+	Long:    `Enable Secret Scanning (without Push Protection) for a repository or organization.`,
+	Example: `
+  # Enable for a single repo
+  gh advanced-security enable secret-scanning owner/repo
+
+  # Enable for an entire organization
+  gh advanced-security enable secret-scanning my-org --all`,
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := services.GetEnforcerServices()
+
+		if len(args) == 0 {
+			fmt.Println("Please specify an Organization or Owner/Repo")
+			os.Exit(1)
+		}
+
+		target := args[0]
+
+		if strings.Contains(target, "/") {
+			// Single Repo Mode
+			parts := strings.Split(target, "/")
+			owner, repo := parts[0], parts[1]
+
+			fmt.Printf("Enabling Secret Scanning for %s/%s...\n", owner, repo)
+			err := svc.EnableSecretScanning(owner, repo)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Success!")
+		} else {
+			// Organization Mode
+			fmt.Printf("Enabling Secret Scanning for ALL repos in %s.\nAre you sure? (y/N): ", target)
+			var response string
+			fmt.Scanln(&response)
+			if strings.ToLower(response) != "y" {
+				fmt.Println("Aborted.")
+				os.Exit(0)
+			}
+
+			err := svc.BulkEnableSecretScanning(target)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(enableCmd)
 	enableCmd.AddCommand(pushProtectionCmd)
+	enableCmd.AddCommand(secretScanningEnableCmd)
 }
