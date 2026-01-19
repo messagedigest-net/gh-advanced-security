@@ -63,13 +63,6 @@ var secretScanningCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	// Build the hierarchy: list -> alerts -> [code-scanning, secret-scanning]
-	listCmd.AddCommand(alertsCmd)
-	alertsCmd.AddCommand(codeScanningCmd)
-	alertsCmd.AddCommand(secretScanningCmd)
-}
-
 // Helper to validate and split "owner/repo"
 func parseRepo(input string) (string, string) {
 	parts := strings.Split(input, "/")
@@ -78,4 +71,32 @@ func parseRepo(input string) (string, string) {
 		os.Exit(1)
 	}
 	return parts[0], parts[1]
+}
+
+// In cmd/list-alerts.go (or a new cmd/list-bypasses.go)
+
+var listBypassesCmd = &cobra.Command{
+	Use:     "bypasses",
+	Short:   "List Push Protection bypasses",
+	Example: "gh advanced-security list bypasses owner/repo",
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := services.GetAlertServices()
+
+		args = services.GetTarget(args, "Which repository? (owner/repo)")
+		owner, repo := parseRepo(args[0])
+
+		err := svc.ListPushProtectionBypasses(owner, repo, json)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	},
+}
+
+func init() {
+	// Build the hierarchy: list -> alerts -> [code-scanning, secret-scanning]
+	listCmd.AddCommand(alertsCmd)
+	alertsCmd.AddCommand(codeScanningCmd)
+	alertsCmd.AddCommand(secretScanningCmd)
+	listCmd.AddCommand(listBypassesCmd)
 }

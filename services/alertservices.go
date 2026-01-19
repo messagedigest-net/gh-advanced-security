@@ -141,3 +141,45 @@ func (a *AlertServices) printSecretScanningTable() error {
 
     return tp.Render()
 }
+
+// In services/alertservices.go
+
+// ListPushProtectionBypasses fetches bypass requests
+func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput bool) error {
+    path := fmt.Sprintf("repos/%s/%s/secret-scanning/push-protection-bypasses", org, repo)
+
+    var bypasses []model.PushProtectionBypass
+    // Use the generic getPages we refactored
+    _, err := getPages(path, &bypasses)
+    if err != nil {
+        return err
+    }
+
+    if jsonOutput {
+        return jsonLister(bypasses)
+    }
+
+    tp, err := getTablePrinter()
+    if err != nil {
+        return err
+    }
+
+    tp.AddHeader([]string{"ID", "Secret Type", "Status", "Requester", "Comment", "Date"})
+    for _, b := range bypasses {
+        tp.AddField(fmt.Sprintf("%d", b.ID))
+        tp.AddField(b.SecretType)
+        tp.AddField(b.Status)
+        tp.AddField(b.Requester.Login)
+
+        // Truncate comment
+        comment := b.RequesterComment
+        if len(comment) > 40 {
+            comment = comment[:37] + "..."
+        }
+        tp.AddField(comment)
+        tp.AddField(b.CreatedAt)
+        tp.EndRow()
+    }
+
+    return tp.Render()
+}

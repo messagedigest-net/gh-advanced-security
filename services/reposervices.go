@@ -25,7 +25,7 @@ func GetRepositoryServices() *RepositoryServices {
 
 func (r *RepositoryServices) Get(name string) (*model.Repository, error) {
 	repo := &model.Repository{}
-	path := fmt.Sprintf("orgs/%s", name)
+	path := fmt.Sprintf("repos/%s", name)
 	err := client.Get(path, repo)
 	return repo, err
 }
@@ -112,54 +112,72 @@ func (r *RepositoryServices) ListFor(org string, user bool, json bool) (err erro
 	return tablePrinter.Render()
 }
 
-func (r *RepositoryServices) Show(name string, json bool) error {
+// In services/reposervices.go
+
+func (r *RepositoryServices) Show(name string, jsonOutput bool) error {
+	// 1. Fetch the Repo
 	repo, err := r.Get(name)
 	if err != nil {
 		return err
 	}
-	if json {
+
+	// 2. JSON "Escape Hatch"
+	if jsonOutput {
 		return jsonLister(repo)
 	}
 
+	// 3. Human-Readable Table "Vibe"
 	tablePrinter, err := getTablePrinter()
 	if err != nil {
 		return err
 	}
 
-	//TODO: Ajustar saída
-	/*
-		tablePrinter.AddField("Organization")
-		tablePrinter.AddField(org.Login)
-		tablePrinter.EndRow()
-		tablePrinter.AddField("API URL")
-		tablePrinter.AddField(org.URL)
-		tablePrinter.EndRow()
-		tablePrinter.AddField("Settings for new repositories:")
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tDependency Graph")
-		tablePrinter.AddField(enabledOrDisabled(org.DependencyGraphEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tDependabot Alerts")
-		tablePrinter.AddField(enabledOrDisabled(org.DependabotAlertsEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tDependabot Security Updates")
-		tablePrinter.AddField(enabledOrDisabled(org.DependabotSecurityUpdatesEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tEnable Advanced Security")
-		tablePrinter.AddField(enabledOrDisabled(org.AdvancedSecurityEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tSecret Scanning")
-		tablePrinter.AddField(enabledOrDisabled(org.SecretScanningEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tSecret Scanning Push Protection")
-		tablePrinter.AddField(enabledOrDisabled(org.SecretScanningPushProtectionEnabledForNewRepositories))
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tSecret Scanning Push Protection Custom Link")
-		tablePrinter.AddField(org.SecretScanningPushProtectionCustomLink)
-		tablePrinter.EndRow()
-		tablePrinter.AddField("\tSecret Scanning Push Protection Custom Link Enabled")
-		tablePrinter.AddField(enabledOrDisabled(org.SecretScanningPushProtectionCustomLinkEnabled))
-		tablePrinter.EndRow()
-	*/
+	// Basic Info
+	tablePrinter.AddField("Repository")
+	tablePrinter.AddField(repo.FullName)
+	tablePrinter.EndRow()
+
+	tablePrinter.AddField("Visibility")
+	tablePrinter.AddField(repo.Visibility)
+	tablePrinter.EndRow()
+
+	tablePrinter.AddField("URL")
+	tablePrinter.AddField(repo.HtmlUrl)
+	tablePrinter.EndRow()
+
+	// 4. Security Configuration Section
+	tablePrinter.AddField("Security Settings:")
+	tablePrinter.EndRow()
+
+	// Safe handling for nil SecurityAndAnalysis
+	sas := repo.SecurityAndAnalysis
+
+	// Secret Scanning
+	tablePrinter.AddField("\tSecret Scanning")
+	if sas.SecretScanning.Status != "" {
+		tablePrinter.AddField(sas.SecretScanning.Status)
+	} else {
+		tablePrinter.AddField("disabled/not available")
+	}
+	tablePrinter.EndRow()
+
+	// Push Protection
+	tablePrinter.AddField("\tPush Protection")
+	if sas.SecretScanningPushProtection.Status != "" {
+		tablePrinter.AddField(sas.SecretScanningPushProtection.Status)
+	} else {
+		tablePrinter.AddField("disabled")
+	}
+	tablePrinter.EndRow()
+
+	// Advanced Security (GHAS) License Status
+	tablePrinter.AddField("\tAdvanced Security")
+	if sas.AdvancedSecurity.Status != "" {
+		tablePrinter.AddField(sas.AdvancedSecurity.Status)
+	} else {
+		tablePrinter.AddField("disabled")
+	}
+	tablePrinter.EndRow()
+
 	return tablePrinter.Render()
 }
