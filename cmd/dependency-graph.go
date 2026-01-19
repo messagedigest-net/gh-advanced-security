@@ -47,7 +47,7 @@ var dependabotAlertsCmd = &cobra.Command{
 		args = services.GetTarget(args, "Which repository? (owner/repo)")
 		owner, repo := parseRepo(args[0])
 
-		err := svc.ListDependabotAlerts(owner, repo, json) // 'json' flag from root.go
+		err := svc.ListDependabotAlerts(owner, repo, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

@@ -25,7 +25,7 @@ var repositoriesCmd = &cobra.Command{
 
 		service = services.GetRepositoryServices()
 
-		err = service.ListFor(args[0], user, json, UserPageSize)
+		err = service.ListFor(args[0], user, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

@@ -20,24 +20,41 @@ func GetDependencyServices() *DependencyServices {
 }
 
 // ListDependabotAlerts fetches alerts using your standardized pagination
-func (d *DependencyServices) ListDependabotAlerts(org, repo string, jsonOutput bool) error {
-	path := fmt.Sprintf("repos/%s/%s/dependabot/alerts", org, repo)
+func (d *DependencyServices) ListDependabotAlerts(org, repo string, jsonOutput bool, userPageSize int, fetchAll bool) error {
+	pageSize := GetOptimalPageSize(userPageSize)
+	path := fmt.Sprintf("repos/%s/%s/dependabot/alerts?per_page=%d", org, repo, pageSize)
 
-	// Reset state
 	d.alerts = []model.DependabotAlert{}
 
-	// Pagination "Vibe"
 	for {
 		var pageAlerts []model.DependabotAlert
-		// Generic getPages call
 		nextUrl, err := getPages(path, &pageAlerts)
 		if err != nil {
 			return err
 		}
 
-		d.alerts = append(d.alerts, pageAlerts...)
+		if jsonOutput {
+			d.alerts = append(d.alerts, pageAlerts...)
+			if nextUrl == "" {
+				break
+			}
+			path = nextUrl
+			continue
+		}
+
+		d.alerts = pageAlerts
+		if err := d.printTable(); err != nil {
+			return err
+		}
+
 		if nextUrl == "" {
 			break
+		}
+
+		if !fetchAll {
+			if !AskForNextPage() {
+				break
+			}
 		}
 		path = nextUrl
 	}
@@ -45,8 +62,7 @@ func (d *DependencyServices) ListDependabotAlerts(org, repo string, jsonOutput b
 	if jsonOutput {
 		return jsonLister(d.alerts)
 	}
-
-	return d.printTable()
+	return nil
 }
 
 // ExportSBOM fetches the CycloneDX SBOM for the repository

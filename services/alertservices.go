@@ -22,27 +22,20 @@ func GetAlertServices() *AlertServices {
 }
 
 // ListCodeScanning fetches and displays Code Scanning alerts
-func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool, userPageSize int) error { // 1. Determine Page Size
+func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool, userPageSize int, fetchAll bool) error {
     pageSize := GetOptimalPageSize(userPageSize)
-
-    // 2. Prepare URL with pagination
     path := fmt.Sprintf("repos/%s/%s/code-scanning/alerts?per_page=%d", org, repo, pageSize)
 
-    // Reset state for new request
     a.codeAlerts = []model.Alert{}
 
     for {
         var pageAlerts []model.Alert
-
-        // Fetch one page
         nextUrl, err := getPages(path, &pageAlerts)
         if err != nil {
             return err
         }
 
-        // 3. Handle JSON vs Interactive
         if jsonOutput {
-            // For JSON, we fetch ALL pages silently to dump a complete valid JSON object
             a.codeAlerts = append(a.codeAlerts, pageAlerts...)
             if nextUrl == "" {
                 break
@@ -51,53 +44,67 @@ func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool, user
             continue
         }
 
-        // 4. Interactive Mode: Print THIS page immediately
-        a.codeAlerts = pageAlerts // Temporarily set strictly for printing
+        // Interactive Render
+        a.codeAlerts = pageAlerts
         if err := a.printCodeScanningTable(); err != nil {
             return err
         }
 
-        // 5. Check continuation
         if nextUrl == "" {
             break
         }
 
-        // 6. Ask User
-        if !AskForNextPage() {
-            break
+        // LOGIC: Pause only if NOT fetching all
+        if !fetchAll {
+            if !AskForNextPage() {
+                break
+            }
         }
-
         path = nextUrl
     }
 
     if jsonOutput {
         return jsonLister(a.codeAlerts)
     }
-
     return nil
 }
 
 // ListSecretScanning fetches and displays Secret Scanning alerts
-func (a *AlertServices) ListSecretScanning(org, repo string, jsonOutput bool) error {
-    // Reset state
+func (a *AlertServices) ListSecretScanning(org, repo string, jsonOutput bool, userPageSize int, fetchAll bool) error {
+    pageSize := GetOptimalPageSize(userPageSize)
+    path := fmt.Sprintf("repos/%s/%s/secret-scanning/alerts?per_page=%d", org, repo, pageSize)
+
     a.secretAlerts = []model.SecretScanningAlert{}
-    a.next = ""
 
-    path := fmt.Sprintf("repos/%s/%s/secret-scanning/alerts", org, repo)
-
-    // Pagination Loop
     for {
         var pageAlerts []model.SecretScanningAlert
-
         nextUrl, err := getPages(path, &pageAlerts)
         if err != nil {
             return err
         }
 
-        a.secretAlerts = append(a.secretAlerts, pageAlerts...)
+        if jsonOutput {
+            a.secretAlerts = append(a.secretAlerts, pageAlerts...)
+            if nextUrl == "" {
+                break
+            }
+            path = nextUrl
+            continue
+        }
+
+        a.secretAlerts = pageAlerts
+        if err := a.printSecretScanningTable(); err != nil {
+            return err
+        }
 
         if nextUrl == "" {
             break
+        }
+
+        if !fetchAll {
+            if !AskForNextPage() {
+                break
+            }
         }
         path = nextUrl
     }
@@ -105,8 +112,7 @@ func (a *AlertServices) ListSecretScanning(org, repo string, jsonOutput bool) er
     if jsonOutput {
         return jsonLister(a.secretAlerts)
     }
-
-    return a.printSecretScanningTable()
+    return nil
 }
 
 // Helper to print Code Scanning table
@@ -168,20 +174,55 @@ func (a *AlertServices) printSecretScanningTable() error {
 // In services/alertservices.go
 
 // ListPushProtectionBypasses fetches bypass requests
-func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput bool) error {
-    path := fmt.Sprintf("repos/%s/%s/secret-scanning/push-protection-bypasses", org, repo)
+func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput bool, userPageSize int, fetchAll bool) error {
+    pageSize := GetOptimalPageSize(userPageSize)
+    path := fmt.Sprintf("repos/%s/%s/secret-scanning/push-protection-bypasses?per_page=%d", org, repo, pageSize)
 
-    var bypasses []model.PushProtectionBypass
-    // Use the generic getPages we refactored
-    _, err := getPages(path, &bypasses)
-    if err != nil {
-        return err
+    var allBypasses []model.PushProtectionBypass // We need a local accumulator or struct field
+
+    for {
+        var pageBypasses []model.PushProtectionBypass
+        nextUrl, err := getPages(path, &pageBypasses)
+        if err != nil {
+            return err
+        }
+
+        if jsonOutput {
+            allBypasses = append(allBypasses, pageBypasses...)
+            if nextUrl == "" {
+                break
+            }
+            path = nextUrl
+            continue
+        }
+
+        // For bypasses, we don't have a struct field to store them temporarily in the service
+        // (unless you added one), so we can pass the slice directly to a helper or render inline.
+        // Assuming you add 'printBypassTable(bypasses)' helper:
+        if err := a.printBypassTable(pageBypasses); err != nil {
+            return err
+        }
+
+        if nextUrl == "" {
+            break
+        }
+
+        if !fetchAll {
+            if !AskForNextPage() {
+                break
+            }
+        }
+        path = nextUrl
     }
 
     if jsonOutput {
-        return jsonLister(bypasses)
+        return jsonLister(allBypasses)
     }
+    return nil
+}
 
+// Helper for Bypasses
+func (a *AlertServices) printBypassTable(bypasses []model.PushProtectionBypass) error {
     tp, err := getTablePrinter()
     if err != nil {
         return err
@@ -194,7 +235,6 @@ func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput 
         tp.AddField(b.Status)
         tp.AddField(b.Requester.Login)
 
-        // Truncate comment
         comment := b.RequesterComment
         if len(comment) > 40 {
             comment = comment[:37] + "..."
@@ -203,6 +243,5 @@ func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput 
         tp.AddField(b.CreatedAt)
         tp.EndRow()
     }
-
     return tp.Render()
 }

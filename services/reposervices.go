@@ -56,10 +56,10 @@ func (r *RepositoryServices) FetchAllForOrg(org string) ([]model.Repository, err
 }
 
 // ListFor is the INTERACTIVE version (Fetch -> Print -> Prompt)
-func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, userPageSize int) error {
+// Update signature to accept fetchAll
+func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, userPageSize int, fetchAll bool) error {
 	pageSize := GetOptimalPageSize(userPageSize)
 
-	// Determine endpoint (User vs Org)
 	kind := "orgs"
 	if user {
 		kind = "users"
@@ -75,8 +75,8 @@ func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, use
 			return err
 		}
 
+		// JSON or "Fetch All" should behave similarly regarding accumulation/looping
 		if jsonOutput {
-			// For JSON, accumulate everything silently
 			r.repositories = append(r.repositories, pageRepos...)
 			if nextUrl == "" {
 				break
@@ -85,7 +85,7 @@ func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, use
 			continue
 		}
 
-		// Interactive: Set state and Render THIS page
+		// Interactive Rendering
 		r.repositories = pageRepos
 		if err := r.printRepoTable(); err != nil {
 			return err
@@ -95,9 +95,11 @@ func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, use
 			break
 		}
 
-		// Pause and prompt the user
-		if !AskForNextPage() {
-			break
+		// LOGIC FIX: Only ask if NOT fetching all
+		if !fetchAll {
+			if !AskForNextPage() {
+				break
+			}
 		}
 
 		path = nextUrl

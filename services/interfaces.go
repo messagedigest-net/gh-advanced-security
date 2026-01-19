@@ -1,13 +1,13 @@
 package services
 
 type Lister interface {
-	// List now accepts jsonOutput (bool) and userPageSize (int)
-	List(bool, int) error
+	// List now accepts jsonOutput (bool) , userPageSize (int), and fetchAll (bool)
+	List(bool, int, bool) error
 }
 
 type ListerFor interface {
-	// ListFor now accepts target (string), user (bool), jsonOutput (bool), and userPageSize (int)
-	ListFor(string, bool, bool, int) error
+	// ListFor now accepts target (string), user (bool), jsonOutput (bool),  userPageSize (int), and fetchAll (bool)
+	ListFor(string, bool, bool, int, bool) error
 }
 
 type Shower interface {

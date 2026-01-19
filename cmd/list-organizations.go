@@ -28,8 +28,7 @@ var organizationsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetOrganizationServices()
 
-		// FIX: Pass UserPageSize
-		err := svc.List(json, UserPageSize)
+		err := svc.List(json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

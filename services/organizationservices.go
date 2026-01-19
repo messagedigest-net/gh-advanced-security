@@ -32,11 +32,9 @@ func (o *OrganizationServices) GetAll() error {
 	return err
 }
 
-func (o *OrganizationServices) List(jsonOutput bool, userPageSize int) error {
-	// 1. Calculate Page Size
+// Update signature
+func (o *OrganizationServices) List(jsonOutput bool, userPageSize int, fetchAll bool) error {
 	pageSize := GetOptimalPageSize(userPageSize)
-
-	// 2. Initial Path
 	path := fmt.Sprintf("user/orgs?per_page=%d", pageSize)
 
 	o.organizations = []model.Organization{}
@@ -57,7 +55,6 @@ func (o *OrganizationServices) List(jsonOutput bool, userPageSize int) error {
 			continue
 		}
 
-		// Interactive Render
 		o.organizations = pageOrgs
 		if err := o.printOrgTable(); err != nil {
 			return err
@@ -66,9 +63,14 @@ func (o *OrganizationServices) List(jsonOutput bool, userPageSize int) error {
 		if nextUrl == "" {
 			break
 		}
-		if !AskForNextPage() {
-			break
+
+		// LOGIC FIX:
+		if !fetchAll {
+			if !AskForNextPage() {
+				break
+			}
 		}
+
 		path = nextUrl
 	}
 

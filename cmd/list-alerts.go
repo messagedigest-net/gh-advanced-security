@@ -35,7 +35,7 @@ var codeScanningCmd = &cobra.Command{
 		owner, repo := parseRepo(args[0])
 
 		// 'json' is the persistent flag defined in root.go
-		err := svc.ListCodeScanning(owner, repo, json, UserPageSize)
+		err := svc.ListCodeScanning(owner, repo, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -55,7 +55,7 @@ var secretScanningCmd = &cobra.Command{
 		args = services.GetTarget(args, "Which repository? (format: owner/repo)")
 		owner, repo := parseRepo(args[0])
 
-		err := svc.ListSecretScanning(owner, repo, json)
+		err := svc.ListSecretScanning(owner, repo, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -85,7 +85,7 @@ var listBypassesCmd = &cobra.Command{
 		args = services.GetTarget(args, "Which repository? (owner/repo)")
 		owner, repo := parseRepo(args[0])
 
-		err := svc.ListPushProtectionBypasses(owner, repo, json)
+		err := svc.ListPushProtectionBypasses(owner, repo, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -108,7 +108,7 @@ var dependabotCmd = &cobra.Command{
 
 		// 3. Execution
 		// 'json' is the persistent flag from root.go
-		err := svc.ListDependabotAlerts(owner, repo, json)
+		err := svc.ListDependabotAlerts(owner, repo, json, UserPageSize, all)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
