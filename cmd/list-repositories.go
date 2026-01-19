@@ -1,6 +1,5 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -22,7 +21,7 @@ var repositoriesCmd = &cobra.Command{
 		var service services.ListerFor
 		var err error
 
-		args = services.GetTarget(args, "For which org do you want to list the repos?")
+		args = services.GetTarget(args, "For which org (or user [-u]) do you want to list the repos?")
 
 		service = services.GetRepositoryServices()
 

@@ -93,10 +93,34 @@ var listBypassesCmd = &cobra.Command{
 	},
 }
 
+var dependabotCmd = &cobra.Command{
+	Use:     "dependabot",
+	Aliases: []string{"dep", "dependencies"},
+	Short:   "List Dependabot alerts",
+	Example: "gh advanced-security list alerts dependabot owner/repo",
+	Run: func(cmd *cobra.Command, args []string) {
+		// 1. Get the Service (requires services/dependencyservices.go)
+		svc := services.GetDependencyServices()
+
+		// 2. Target Resolution
+		args = services.GetTarget(args, "Which repository? (format: owner/repo)")
+		owner, repo := parseRepo(args[0])
+
+		// 3. Execution
+		// 'json' is the persistent flag from root.go
+		err := svc.ListDependabotAlerts(owner, repo, json)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	},
+}
+
 func init() {
 	// Build the hierarchy: list -> alerts -> [code-scanning, secret-scanning]
 	listCmd.AddCommand(alertsCmd)
 	alertsCmd.AddCommand(codeScanningCmd)
 	alertsCmd.AddCommand(secretScanningCmd)
+	alertsCmd.AddCommand(dependabotCmd)
 	listCmd.AddCommand(listBypassesCmd)
 }
