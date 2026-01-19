@@ -32,34 +32,67 @@ func (o *OrganizationServices) GetAll() error {
 	return err
 }
 
-func (o *OrganizationServices) List(json bool) error {
-	var err error
-	if o.organizations == nil {
-		if err = o.GetAll(); err != nil {
+func (o *OrganizationServices) List(jsonOutput bool, userPageSize int) error {
+	// 1. Calculate Page Size
+	pageSize := GetOptimalPageSize(userPageSize)
+
+	// 2. Initial Path
+	path := fmt.Sprintf("user/orgs?per_page=%d", pageSize)
+
+	o.organizations = []model.Organization{}
+
+	for {
+		var pageOrgs []model.Organization
+		nextUrl, err := getPages(path, &pageOrgs)
+		if err != nil {
 			return err
 		}
-	}
-	if json {
-		return jsonLister(o.organizations)
+
+		if jsonOutput {
+			o.organizations = append(o.organizations, pageOrgs...)
+			if nextUrl == "" {
+				break
+			}
+			path = nextUrl
+			continue
+		}
+
+		// Interactive Render
+		o.organizations = pageOrgs
+		if err := o.printOrgTable(); err != nil {
+			return err
+		}
+
+		if nextUrl == "" {
+			break
+		}
+		if !AskForNextPage() {
+			break
+		}
+		path = nextUrl
 	}
 
+	if jsonOutput {
+		return jsonLister(o.organizations)
+	}
+	return nil
+}
+
+// Helper method to keep List clean (move your existing table logic here)
+func (o *OrganizationServices) printOrgTable() error {
 	tablePrinter, err := getTablePrinter()
 	if err != nil {
 		return err
 	}
 
-	tablePrinter.AddHeader([]string{"Org", "URL", "Dependency Graph", "Dependabot Alerts", "Dependabot Security Updates", "Advanced Security", "Secret Scanning", "SS Push Protection", "SS PP Custom Link", "SS PP CL Enabled"})
+	tablePrinter.AddHeader([]string{"Org", "URL", "Adv Security", "Secret Scanning", "Push Protection"})
+
 	for _, i := range o.organizations {
 		tablePrinter.AddField(i.Login)
 		tablePrinter.AddField(i.URL)
-		tablePrinter.AddField(enabledOrDisabled(i.DependencyGraphEnabledForNewRepositories))
-		tablePrinter.AddField(enabledOrDisabled(i.DependabotAlertsEnabledForNewRepositories))
-		tablePrinter.AddField(enabledOrDisabled(i.DependabotSecurityUpdatesEnabledForNewRepositories))
 		tablePrinter.AddField(enabledOrDisabled(i.AdvancedSecurityEnabledForNewRepositories))
 		tablePrinter.AddField(enabledOrDisabled(i.SecretScanningEnabledForNewRepositories))
 		tablePrinter.AddField(enabledOrDisabled(i.SecretScanningPushProtectionEnabledForNewRepositories))
-		tablePrinter.AddField(i.SecretScanningPushProtectionCustomLink)
-		tablePrinter.AddField(enabledOrDisabled(i.SecretScanningPushProtectionCustomLinkEnabled))
 		tablePrinter.EndRow()
 	}
 	return tablePrinter.Render()

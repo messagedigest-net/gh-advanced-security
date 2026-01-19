@@ -19,7 +19,6 @@ func GetRepositoryServices() *RepositoryServices {
 	if repoSvcs == nil {
 		repoSvcs = &RepositoryServices{}
 	}
-
 	return repoSvcs
 }
 
@@ -30,50 +29,88 @@ func (r *RepositoryServices) Get(name string) (*model.Repository, error) {
 	return repo, err
 }
 
-func (r *RepositoryServices) getAll(org string, user bool) (err error) {
-	var path string
-	var repos []model.Repository
-	if strings.Compare(r.org, org) == 0 && r.HasNext() {
-		path = r.next
-	} else {
-		r.repositories = []model.Repository{}
-		r.org = org
-		kind := "orgs"
-		if user {
-			kind = "users"
+// FetchAllForOrg silently retrieves ALL repositories for automation (Bulk Enforcers).
+// It handles pagination automatically without user interaction.
+func (r *RepositoryServices) FetchAllForOrg(org string) ([]model.Repository, error) {
+	var allRepos []model.Repository
+
+	// Start with a large page size for efficiency in background tasks
+	path := fmt.Sprintf("orgs/%s/repos?per_page=100", org)
+
+	for {
+		var pageRepos []model.Repository
+		nextUrl, err := getPages(path, &pageRepos)
+		if err != nil {
+			return nil, err
 		}
-		path = fmt.Sprintf("%s/%s/repos", kind, org)
+
+		allRepos = append(allRepos, pageRepos...)
+
+		if nextUrl == "" {
+			break
+		}
+		path = nextUrl
 	}
 
-	r.next, err = getPages(path, &repos)
-	if err != nil {
-		return err
+	return allRepos, nil
+}
+
+// ListFor is the INTERACTIVE version (Fetch -> Print -> Prompt)
+func (r *RepositoryServices) ListFor(org string, user bool, jsonOutput bool, userPageSize int) error {
+	pageSize := GetOptimalPageSize(userPageSize)
+
+	// Determine endpoint (User vs Org)
+	kind := "orgs"
+	if user {
+		kind = "users"
 	}
-	fmt.Println(path, r.next)
+	path := fmt.Sprintf("%s/%s/repos?per_page=%d", kind, org, pageSize)
 
-	r.repositories = append(r.repositories, repos...)
+	r.repositories = []model.Repository{}
 
+	for {
+		var pageRepos []model.Repository
+		nextUrl, err := getPages(path, &pageRepos)
+		if err != nil {
+			return err
+		}
+
+		if jsonOutput {
+			// For JSON, accumulate everything silently
+			r.repositories = append(r.repositories, pageRepos...)
+			if nextUrl == "" {
+				break
+			}
+			path = nextUrl
+			continue
+		}
+
+		// Interactive: Set state and Render THIS page
+		r.repositories = pageRepos
+		if err := r.printRepoTable(); err != nil {
+			return err
+		}
+
+		if nextUrl == "" {
+			break
+		}
+
+		// Pause and prompt the user
+		if !AskForNextPage() {
+			break
+		}
+
+		path = nextUrl
+	}
+
+	if jsonOutput {
+		return jsonLister(r.repositories)
+	}
 	return nil
 }
 
-func (r *RepositoryServices) HasNext() bool {
-	return len(r.next) > 0
-}
-
-func (r *RepositoryServices) ListFor(org string, user bool, json bool) (err error) {
-	for {
-		if err = r.getAll(org, user); err != nil {
-			return err
-		}
-		if !r.HasNext() {
-			break
-		}
-	}
-
-	if json {
-		return jsonLister(r.repositories)
-	}
-
+// printRepoTable renders the repository list to the terminal
+func (r *RepositoryServices) printRepoTable() error {
 	tablePrinter, err := getTablePrinter()
 	if err != nil {
 		return err
@@ -93,7 +130,27 @@ func (r *RepositoryServices) ListFor(org string, user bool, json bool) (err erro
 		"PushProtection",
 		"ValidityChecks",
 	})
+
 	for _, repo := range r.repositories {
+		// Nil check for SecurityAndAnalysis to prevent panic on public repos
+		asStatus := "N/A"
+		ssStatus := "N/A"
+		ppStatus := "N/A"
+		vcStatus := "N/A"
+
+		if repo.SecurityAndAnalysis.AdvancedSecurity.Status != "" {
+			asStatus = repo.SecurityAndAnalysis.AdvancedSecurity.Status
+		}
+		if repo.SecurityAndAnalysis.SecretScanning.Status != "" {
+			ssStatus = repo.SecurityAndAnalysis.SecretScanning.Status
+		}
+		if repo.SecurityAndAnalysis.SecretScanningPushProtection.Status != "" {
+			ppStatus = repo.SecurityAndAnalysis.SecretScanningPushProtection.Status
+		}
+		if repo.SecurityAndAnalysis.SecretScanningValidityChecks.Status != "" {
+			vcStatus = repo.SecurityAndAnalysis.SecretScanningValidityChecks.Status
+		}
+
 		tablePrinter.AddField(repo.FullName)
 		tablePrinter.AddField(repo.Owner.Login)
 		tablePrinter.AddField(enabledOrDisabled(repo.Private))
@@ -102,37 +159,32 @@ func (r *RepositoryServices) ListFor(org string, user bool, json bool) (err erro
 		tablePrinter.AddField(repo.Homepage)
 		tablePrinter.AddField(repo.Language)
 		tablePrinter.AddField(strings.Join(repo.Topics, ","))
-		tablePrinter.AddField(repo.SecurityAndAnalysis.AdvancedSecurity.Status)
-		tablePrinter.AddField(repo.SecurityAndAnalysis.SecretScanning.Status)
-		tablePrinter.AddField(repo.SecurityAndAnalysis.SecretScanningPushProtection.Status)
-		tablePrinter.AddField(repo.SecurityAndAnalysis.SecretScanningValidityChecks.Status)
+		tablePrinter.AddField(asStatus)
+		tablePrinter.AddField(ssStatus)
+		tablePrinter.AddField(ppStatus)
+		tablePrinter.AddField(vcStatus)
 		tablePrinter.EndRow()
 	}
 
 	return tablePrinter.Render()
 }
 
-// In services/reposervices.go
-
+// Show renders detailed info for a single repository (from your previous Repomix)
 func (r *RepositoryServices) Show(name string, jsonOutput bool) error {
-	// 1. Fetch the Repo
 	repo, err := r.Get(name)
 	if err != nil {
 		return err
 	}
 
-	// 2. JSON "Escape Hatch"
 	if jsonOutput {
 		return jsonLister(repo)
 	}
 
-	// 3. Human-Readable Table "Vibe"
 	tablePrinter, err := getTablePrinter()
 	if err != nil {
 		return err
 	}
 
-	// Basic Info
 	tablePrinter.AddField("Repository")
 	tablePrinter.AddField(repo.FullName)
 	tablePrinter.EndRow()
@@ -145,38 +197,30 @@ func (r *RepositoryServices) Show(name string, jsonOutput bool) error {
 	tablePrinter.AddField(repo.HtmlUrl)
 	tablePrinter.EndRow()
 
-	// 4. Security Configuration Section
 	tablePrinter.AddField("Security Settings:")
 	tablePrinter.EndRow()
 
 	// Safe handling for nil SecurityAndAnalysis
 	sas := repo.SecurityAndAnalysis
 
-	// Secret Scanning
+	// Helper for safe status access
+	safeStatus := func(status string) string {
+		if status == "" {
+			return "disabled/not available"
+		}
+		return status
+	}
+
 	tablePrinter.AddField("\tSecret Scanning")
-	if sas.SecretScanning.Status != "" {
-		tablePrinter.AddField(sas.SecretScanning.Status)
-	} else {
-		tablePrinter.AddField("disabled/not available")
-	}
+	tablePrinter.AddField(safeStatus(sas.SecretScanning.Status))
 	tablePrinter.EndRow()
 
-	// Push Protection
 	tablePrinter.AddField("\tPush Protection")
-	if sas.SecretScanningPushProtection.Status != "" {
-		tablePrinter.AddField(sas.SecretScanningPushProtection.Status)
-	} else {
-		tablePrinter.AddField("disabled")
-	}
+	tablePrinter.AddField(safeStatus(sas.SecretScanningPushProtection.Status))
 	tablePrinter.EndRow()
 
-	// Advanced Security (GHAS) License Status
 	tablePrinter.AddField("\tAdvanced Security")
-	if sas.AdvancedSecurity.Status != "" {
-		tablePrinter.AddField(sas.AdvancedSecurity.Status)
-	} else {
-		tablePrinter.AddField("disabled")
-	}
+	tablePrinter.AddField(safeStatus(sas.AdvancedSecurity.Status))
 	tablePrinter.EndRow()
 
 	return tablePrinter.Render()

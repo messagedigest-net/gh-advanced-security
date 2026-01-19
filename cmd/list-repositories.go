@@ -21,11 +21,11 @@ var repositoriesCmd = &cobra.Command{
 		var service services.ListerFor
 		var err error
 
-		args = services.GetTarget(args, "For which org (or user [-u]) do you want to list the repos?")
+		args = services.GetTarget(args, "For which org (for user, set the [-u] flag) do you want to list the repos?")
 
 		service = services.GetRepositoryServices()
 
-		err = service.ListFor(args[0], user, json)
+		err = service.ListFor(args[0], user, json, UserPageSize)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

@@ -48,13 +48,12 @@ func (e *EnforcerServices) BulkEnablePushProtection(org string) error {
 	repoSvc := GetRepositoryServices()
 
 	fmt.Printf("Fetching all repositories for %s... (this may take a moment)\n", org)
-	// Ensure we list ALL repos, not just the first page
-	err := repoSvc.ListFor(org, false, true) // arguments: target, user, json(suppress output)
+
+	repos, err := repoSvc.FetchAllForOrg(org)
 	if err != nil {
 		return err
 	}
 
-	repos := repoSvc.repositories
 	fmt.Printf("Found %d repositories. Starting enforcement...\n", len(repos))
 
 	// Worker Pool Setup
@@ -138,12 +137,11 @@ func (e *EnforcerServices) BulkEnableSecretScanning(org string) error {
 	repoSvc := GetRepositoryServices()
 
 	fmt.Printf("Fetching repositories for %s...\n", org)
-	err := repoSvc.ListFor(org, false, true)
+	repos, err := repoSvc.FetchAllForOrg(org)
 	if err != nil {
 		return err
 	}
 
-	repos := repoSvc.repositories
 	fmt.Printf("Found %d repositories. Starting enforcement...\n", len(repos))
 
 	jobs := make(chan model.Repository, len(repos))

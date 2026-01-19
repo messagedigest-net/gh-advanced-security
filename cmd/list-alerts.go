@@ -35,7 +35,7 @@ var codeScanningCmd = &cobra.Command{
 		owner, repo := parseRepo(args[0])
 
 		// 'json' is the persistent flag defined in root.go
-		err := svc.ListCodeScanning(owner, repo, json)
+		err := svc.ListCodeScanning(owner, repo, json, UserPageSize)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

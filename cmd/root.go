@@ -23,11 +23,11 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-  prompt   *prompter.Prompter
-  json     bool
-  user     bool
-  all      bool
-  pageSize int
+  prompt       *prompter.Prompter
+  json         bool
+  user         bool
+  all          bool
+  UserPageSize int
 )
 
 func init() {
@@ -35,7 +35,7 @@ func init() {
   rootCmd.PersistentFlags().BoolVarP(&json, "json", "j", false, "Output in JSON")
   rootCmd.PersistentFlags().BoolVarP(&user, "user", "u", false, "Show user data instead of organization. e.g.: gh advanced-security list repos -u username")
   rootCmd.PersistentFlags().BoolVarP(&all, "all", "a", false, "Get all data for paged API responses.")
-  rootCmd.PersistentFlags().IntVarP(&pageSize, "pageSize", "p", 20, "API request page size")
+  rootCmd.PersistentFlags().IntVarP(&UserPageSize, "page", "p", 0, "Number of lines to show per page (default: terminal height, max: 100)")
 
 }
 

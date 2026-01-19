@@ -22,28 +22,51 @@ func GetAlertServices() *AlertServices {
 }
 
 // ListCodeScanning fetches and displays Code Scanning alerts
-func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool) error {
+func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool, userPageSize int) error { // 1. Determine Page Size
+    pageSize := GetOptimalPageSize(userPageSize)
+
+    // 2. Prepare URL with pagination
+    path := fmt.Sprintf("repos/%s/%s/code-scanning/alerts?per_page=%d", org, repo, pageSize)
+
     // Reset state for new request
     a.codeAlerts = []model.Alert{}
-    a.next = ""
 
-    path := fmt.Sprintf("repos/%s/%s/code-scanning/alerts", org, repo)
-
-    // Pagination Loop
     for {
         var pageAlerts []model.Alert
 
-        // Use the new generic getPages[T]
+        // Fetch one page
         nextUrl, err := getPages(path, &pageAlerts)
         if err != nil {
             return err
         }
 
-        a.codeAlerts = append(a.codeAlerts, pageAlerts...)
+        // 3. Handle JSON vs Interactive
+        if jsonOutput {
+            // For JSON, we fetch ALL pages silently to dump a complete valid JSON object
+            a.codeAlerts = append(a.codeAlerts, pageAlerts...)
+            if nextUrl == "" {
+                break
+            }
+            path = nextUrl
+            continue
+        }
 
+        // 4. Interactive Mode: Print THIS page immediately
+        a.codeAlerts = pageAlerts // Temporarily set strictly for printing
+        if err := a.printCodeScanningTable(); err != nil {
+            return err
+        }
+
+        // 5. Check continuation
         if nextUrl == "" {
             break
         }
+
+        // 6. Ask User
+        if !AskForNextPage() {
+            break
+        }
+
         path = nextUrl
     }
 
@@ -51,7 +74,7 @@ func (a *AlertServices) ListCodeScanning(org, repo string, jsonOutput bool) erro
         return jsonLister(a.codeAlerts)
     }
 
-    return a.printCodeScanningTable()
+    return nil
 }
 
 // ListSecretScanning fetches and displays Secret Scanning alerts

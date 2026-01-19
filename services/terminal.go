@@ -108,3 +108,37 @@ func GetTarget(args []string, message string) []string {
 
 	return args
 }
+
+// GetOptimalPageSize calculates the page size based on user flag or terminal height
+func GetOptimalPageSize(userSize int) int {
+	const ApiMax = 100
+
+	// 1. If user specified a flag, use it (clamped to ApiMax)
+	if userSize > 0 {
+		if userSize > ApiMax {
+			return ApiMax
+		}
+		return userSize
+	}
+
+	// 2. Calculate based on Terminal Height
+	t := GetTerminal()
+	_, height, err := t.Size()
+	if err != nil {
+		// Fallback if we can't detect terminal size
+		return 20
+	}
+
+	// 3. Subtract 2 for the prompt/header line
+	size := height - 2
+
+	// 4. Safety clamps
+	if size > ApiMax {
+		return ApiMax
+	}
+	if size < 1 {
+		return 10 // Minimal fallback
+	}
+
+	return size
+}

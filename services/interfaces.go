@@ -1,13 +1,16 @@
 package services
 
 type Lister interface {
-	List(bool) error //true for json output
+	// List now accepts jsonOutput (bool) and userPageSize (int)
+	List(bool, int) error
 }
 
 type ListerFor interface {
-	ListFor(string, bool, bool) error //target, user, json
+	// ListFor now accepts target (string), user (bool), jsonOutput (bool), and userPageSize (int)
+	ListFor(string, bool, bool, int) error
 }
 
 type Shower interface {
-	Show(string, bool) error //name what should be displayed, true for json output
+	// Show remains unchanged: name (string), jsonOutput (bool)
+	Show(string, bool) error
 }
