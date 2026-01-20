@@ -113,3 +113,23 @@ func (d *DependencyServices) printTable() error {
 
 	return tp.Render()
 }
+
+// FetchAllDependabotAlerts retrieves ALL dependabot alerts silently for reporting
+func (d *DependencyServices) FetchAllDependabotAlerts(org, repo string) ([]model.DependabotAlert, error) {
+	var allAlerts []model.DependabotAlert
+	path := fmt.Sprintf("repos/%s/%s/dependabot/alerts?per_page=100", org, repo)
+
+	for {
+		var pageAlerts []model.DependabotAlert
+		nextUrl, err := getPages(path, &pageAlerts)
+		if err != nil {
+			return nil, err
+		}
+		allAlerts = append(allAlerts, pageAlerts...)
+		if nextUrl == "" {
+			break
+		}
+		path = nextUrl
+	}
+	return allAlerts, nil
+}

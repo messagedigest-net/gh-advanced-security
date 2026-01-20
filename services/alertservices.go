@@ -245,3 +245,43 @@ func (a *AlertServices) printBypassTable(bypasses []model.PushProtectionBypass) 
     }
     return tp.Render()
 }
+
+// FetchAllCodeScanning retrieves ALL alerts for a repo silently (for reporting)
+func (a *AlertServices) FetchAllCodeScanning(org, repo string) ([]model.Alert, error) {
+    var allAlerts []model.Alert
+    path := fmt.Sprintf("repos/%s/%s/code-scanning/alerts?per_page=100", org, repo)
+
+    for {
+        var pageAlerts []model.Alert
+        nextUrl, err := getPages(path, &pageAlerts)
+        if err != nil {
+            return nil, err
+        }
+        allAlerts = append(allAlerts, pageAlerts...)
+        if nextUrl == "" {
+            break
+        }
+        path = nextUrl
+    }
+    return allAlerts, nil
+}
+
+// FetchAllSecretScanning retrieves ALL secret alerts silently
+func (a *AlertServices) FetchAllSecretScanning(org, repo string) ([]model.SecretScanningAlert, error) {
+    var allAlerts []model.SecretScanningAlert
+    path := fmt.Sprintf("repos/%s/%s/secret-scanning/alerts?per_page=100", org, repo)
+
+    for {
+        var pageAlerts []model.SecretScanningAlert
+        nextUrl, err := getPages(path, &pageAlerts)
+        if err != nil {
+            return nil, err
+        }
+        allAlerts = append(allAlerts, pageAlerts...)
+        if nextUrl == "" {
+            break
+        }
+        path = nextUrl
+    }
+    return allAlerts, nil
+}
