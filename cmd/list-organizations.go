@@ -27,8 +27,9 @@ var organizationsCmd = &cobra.Command{
 	- Secret Scanning Push Protection Custom Link Enabled`,
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetOrganizationServices()
+		flags := services.GetGlobalFlags()
 
-		err := svc.List(json, UserPageSize, all)
+		err := svc.List(flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

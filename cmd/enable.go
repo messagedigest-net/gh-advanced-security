@@ -31,9 +31,7 @@ var pushProtectionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
-		args = services.GetTarget(args, "For which org or repo do you want to enable Push Protection?")
-
-		target := args[0]
+		target, _ := services.GetTarget(cmd, args, "For which org or repo do you want to enable Push Protection?")
 
 		// Check if it's a Repo (has slash) or Org (no slash)
 		if strings.Contains(target, "/") {
@@ -82,9 +80,7 @@ var secretScanningEnableCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
-		args = services.GetTarget(args, "For which org or repo do you want to enable Secret Scanning?")
-
-		target := args[0]
+		target, _ := services.GetTarget(cmd, args, "For which org or repo do you want to enable Secret Scanning?")
 
 		if strings.Contains(target, "/") {
 			// Single Repo Mode

@@ -1,6 +1,5 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -32,9 +31,9 @@ var organizationCmd = &cobra.Command{
 
 		service = services.GetOrganizationServices()
 
-		args = services.GetTarget(args, "Which organization do you want to show?")
+		target, flags := services.GetTarget(cmd, args, "Which organization do you want to show?")
 
-		err = service.Show(args[0], json)
+		err = service.Show(target, flags.JSON)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

@@ -26,8 +26,8 @@ var sbomCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetDependencyServices()
 
-		args = services.GetTarget(args, "Which repository? (owner/repo)")
-		owner, repo := parseRepo(args[0]) // Reusing helper from list-alerts.go
+		target, _ := services.GetTarget(cmd, args, "Which repository? (owner/repo)")
+		owner, repo := parseRepo(target) // Reusing helper from list-alerts.go
 
 		err := svc.ExportSBOM(owner, repo)
 		if err != nil {
@@ -44,10 +44,10 @@ var dependabotAlertsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetDependencyServices()
 
-		args = services.GetTarget(args, "Which repository? (owner/repo)")
-		owner, repo := parseRepo(args[0])
+		target, flags := services.GetTarget(cmd, args, "Which repository? (owner/repo)")
+		owner, repo := parseRepo(target)
 
-		err := svc.ListDependabotAlerts(owner, repo, json, UserPageSize, all)
+		err := svc.ListDependabotAlerts(owner, repo, flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

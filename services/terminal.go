@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/cli/go-gh/v2/pkg/tableprinter"
@@ -95,18 +96,34 @@ func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle strin
 	subCommands[choosen].Run(subCommands[choosen], args)
 }
 
-func GetTarget(args []string, message string) []string {
+// GetTarget parses the target and all global flags.
+// Returns: target(string), flags(GlobalFlags)
+func GetTarget(cmd *cobra.Command, args []string, message string) (string, *GlobalFlags) {
+	var flags *GlobalFlags
 
+	var target string
 	if len(args) < 1 {
-		name, err := prompt.Input(message, "")
-		if err != nil || len(name) == 0 {
-			fmt.Printf("Unable to %s.", message)
+		GetPrompt()
+		response, err := prompt.Input(message, "")
+		if err != nil || len(response) == 0 {
+			fmt.Printf("Unable to read input: %v\n", err)
 			os.Exit(1)
 		}
-		args = append(args, name)
+
+		input := strings.Split(response, " ")
+
+		flags, err = ParseGlobalFlags(cmd, input)
+		if err != nil {
+			fmt.Printf("Error parsing flags: %v\n", err)
+			os.Exit(1)
+		}
+		target = input[0]
+	} else {
+		target = args[0]
+		flags = GetGlobalFlags()
 	}
 
-	return args
+	return target, flags
 }
 
 // GetOptimalPageSize calculates the page size based on user flag or terminal height

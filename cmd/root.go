@@ -12,31 +12,21 @@ import (
 var rootCmd = &cobra.Command{
   Use:   "advanced-security",
   Short: "GitHub CLI extension to manage GitHub Advanced Security features",
-  Long: `GitHub CLI extension to manage GitHub Advanced Security features:
-                DependaBot
-                Code Scanning
-                Secret Scanning
-                Security Events`,
+  Long:  `GitHub CLI extension to manage GitHub Advanced Security features...`,
   Run: func(cmd *cobra.Command, args []string) {
     services.ChooseSubCommand(cmd.Commands(), args, "What do you want to do?")
   },
 }
 
-var (
-  prompt       *prompter.Prompter
-  json         bool
-  user         bool
-  all          bool
-  UserPageSize int
-)
+// Global prompter variable can stay if used widely,
+// but the flag variables (user, all, json, etc) are GONE.
+var prompt *prompter.Prompter
 
 func init() {
   prompt = services.GetPrompt()
-  rootCmd.PersistentFlags().BoolVarP(&json, "json", "j", false, "Output in JSON")
-  rootCmd.PersistentFlags().BoolVarP(&user, "user", "u", false, "Show user data instead of organization. e.g.: gh advanced-security list repos -u username")
-  rootCmd.PersistentFlags().BoolVarP(&all, "all", "a", false, "Get all data for paged API responses.")
-  rootCmd.PersistentFlags().IntVarP(&UserPageSize, "page", "p", 0, "Number of lines to show per page (default: terminal height, max: 100)")
 
+  // Delegate Flag Definition to the Service
+  services.DefineGlobalFlags(rootCmd)
 }
 
 func Execute() {

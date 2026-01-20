@@ -31,11 +31,11 @@ var codeScanningCmd = &cobra.Command{
 		svc := services.GetAlertServices()
 
 		// Ensure we have a target repo
-		args = services.GetTarget(args, "Which repository? (format: owner/repo)")
-		owner, repo := parseRepo(args[0])
+		target, flags := services.GetTarget(cmd, args, "Which repository? (format: owner/repo)")
+		owner, repo := parseRepo(target)
 
 		// 'json' is the persistent flag defined in root.go
-		err := svc.ListCodeScanning(owner, repo, json, UserPageSize, all)
+		err := svc.ListCodeScanning(owner, repo, flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -52,10 +52,10 @@ var secretScanningCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetAlertServices()
 
-		args = services.GetTarget(args, "Which repository? (format: owner/repo)")
-		owner, repo := parseRepo(args[0])
+		target, flags := services.GetTarget(cmd, args, "Which repository? (format: owner/repo)")
+		owner, repo := parseRepo(target)
 
-		err := svc.ListSecretScanning(owner, repo, json, UserPageSize, all)
+		err := svc.ListSecretScanning(owner, repo, flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -82,10 +82,10 @@ var listBypassesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetAlertServices()
 
-		args = services.GetTarget(args, "Which repository? (owner/repo)")
-		owner, repo := parseRepo(args[0])
+		target, flags := services.GetTarget(cmd, args, "Which repository? (owner/repo)")
+		owner, repo := parseRepo(target)
 
-		err := svc.ListPushProtectionBypasses(owner, repo, json, UserPageSize, all)
+		err := svc.ListPushProtectionBypasses(owner, repo, flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -103,12 +103,12 @@ var dependabotCmd = &cobra.Command{
 		svc := services.GetDependencyServices()
 
 		// 2. Target Resolution
-		args = services.GetTarget(args, "Which repository? (format: owner/repo)")
-		owner, repo := parseRepo(args[0])
+		target, flags := services.GetTarget(cmd, args, "Which repository? (format: owner/repo)")
+		owner, repo := parseRepo(target)
 
 		// 3. Execution
 		// 'json' is the persistent flag from root.go
-		err := svc.ListDependabotAlerts(owner, repo, json, UserPageSize, all)
+		err := svc.ListDependabotAlerts(owner, repo, flags.JSON, flags.PageSize, flags.All)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
