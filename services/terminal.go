@@ -81,6 +81,9 @@ func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle strin
 	subCommands := make(map[string]*cobra.Command)
 
 	for _, c := range subCmds {
+		if c.Name() == "completion" || c.Name() == "help" {
+			continue
+		}
 		subCommands[c.Name()] = c
 	}
 
