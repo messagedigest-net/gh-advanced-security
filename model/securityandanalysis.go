@@ -5,4 +5,5 @@ type SecurityAndAnalysis struct {
 	SecretScanning               Status `json:"secret_scanning"`
 	SecretScanningPushProtection Status `json:"secret_scanning_push_protection"`
 	SecretScanningValidityChecks Status `json:"secret_scanning_validity_checks"`
+	DependabotSecurityUpdates    Status `json:"dependabot_security_updates"`
 }
