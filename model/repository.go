@@ -16,7 +16,7 @@ type Repository struct {
 	Archived            bool
 	Disabled            bool
 	Visibility          string
-	CreatedAt           string `json:"created_at"`
-	UpdatedAt           string `json:"updated_at"`
-	SecurityAndAnalysis SecurityAndAnalysis
+	CreatedAt           string              `json:"created_at"`
+	UpdatedAt           string              `json:"updated_at"`
+	SecurityAndAnalysis SecurityAndAnalysis `json:"security_and_analysis"`
 }

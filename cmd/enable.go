@@ -10,32 +10,33 @@ import (
 )
 
 var enableCmd = &cobra.Command{
-	Use:   "enable",
-	Short: "Enable security features",
-	Long:  `Enable security features like Secret Scanning and Push Protection.`,
+	Use:     "enable",
+	Aliases: []string{"en"},
+	Short:   "Enable security features",
+	Long:    `Enable security features like Secret Scanning, Push Protection and Dependabot.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		services.ChooseSubCommand(cmd.Commands(), args, "What do you want to enable?")
 	},
 }
 
 var pushProtectionCmd = &cobra.Command{
-	Use:   "push-protection",
-	Short: "Enable Push Protection",
-	Long:  `Enable Secret Scanning and Push Protection for a repository or all repositories in an organization.`,
+	Use:     "push-protection",
+	Aliases: []string{"pp"},
+	Short:   "Enable Push Protection",
+	Long:    `Enable Secret Scanning and Push Protection for a repository or all repositories in an organization.`,
 	Example: `
   # Enable for a single repo
   gh advanced-security enable push-protection owner/repo
 
-  # Enable for an entire organization (Interactive)
-  gh advanced-security enable push-protection my-org --all`,
+  # Enable for an entire organization
+  gh advanced-security enable push-protection my-org`,
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
 		target, _ := services.GetTarget(cmd, args, "For which org or repo do you want to enable Push Protection?")
 
-		// Check if it's a Repo (has slash) or Org (no slash)
 		if strings.Contains(target, "/") {
-			// Single Repo Mode
+			// === Single Repo Mode ===
 			parts := strings.Split(target, "/")
 			owner, repo := parts[0], parts[1]
 
@@ -47,16 +48,7 @@ var pushProtectionCmd = &cobra.Command{
 			}
 			fmt.Println("Success!")
 		} else {
-			// Organization Mode
-			// You might want to add a confirmation prompt here
-			fmt.Printf("Enabling Push Protection for ALL repos in %s.\nAre you sure? (y/N): ", target)
-			var response string
-			fmt.Scanln(&response)
-			if strings.ToLower(response) != "y" {
-				fmt.Println("Aborted.")
-				os.Exit(0)
-			}
-
+			// Chama o método otimizado (O(1))
 			err := svc.BulkEnablePushProtection(target)
 			if err != nil {
 				fmt.Println(err)
@@ -76,14 +68,14 @@ var secretScanningEnableCmd = &cobra.Command{
   gh advanced-security enable secret-scanning owner/repo
 
   # Enable for an entire organization
-  gh advanced-security enable secret-scanning my-org --all`,
+  gh advanced-security enable secret-scanning my-org`,
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := services.GetEnforcerServices()
 
 		target, _ := services.GetTarget(cmd, args, "For which org or repo do you want to enable Secret Scanning?")
 
 		if strings.Contains(target, "/") {
-			// Single Repo Mode
+			// === Single Repo Mode ===
 			parts := strings.Split(target, "/")
 			owner, repo := parts[0], parts[1]
 
@@ -95,16 +87,88 @@ var secretScanningEnableCmd = &cobra.Command{
 			}
 			fmt.Println("Success!")
 		} else {
-			// Organization Mode
-			fmt.Printf("Enabling Secret Scanning for ALL repos in %s.\nAre you sure? (y/N): ", target)
-			var response string
-			fmt.Scanln(&response)
-			if strings.ToLower(response) != "y" {
-				fmt.Println("Aborted.")
-				os.Exit(0)
+			// Chama o método otimizado (O(1))
+			err := svc.BulkEnableSecretScanning(target)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+	},
+}
+
+var secretScanningNonProviderPatternsEnableCmd = &cobra.Command{
+	Use:     "non-provider-patterns",
+	Aliases: []string{"npp"},
+	Short:   "Enable Secret Scanning Non-Provider Patterns",
+	Long:    `Enable Secret Scanning Non-Provider Patterns for a repository.`,
+	Example: `
+  # Enable for a single repo
+  gh advanced-security enable non-provider-patterns owner/repo`,
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := services.GetEnforcerServices()
+
+		target, _ := services.GetTarget(cmd, args, "For which repo do you want to enable Secret Scanning Non-Provider Patterns?")
+
+		if strings.Contains(target, "/") {
+			// === Single Repo Mode ===
+			parts := strings.Split(target, "/")
+			owner, repo := parts[0], parts[1]
+
+			fmt.Printf("Enabling Secret Scanning Non-Provider Patterns for %s/%s...\n", owner, repo)
+			err := svc.EnableSecretScanningNonProviderPatterns(owner, repo)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Success!")
+		} else {
+			//
+			fmt.Println("This setting can only be applied on individual repositories.")
+			os.Exit(1)
+		}
+	},
+}
+
+var dependabotEnableCmd = &cobra.Command{
+	Use:     "dependabot",
+	Aliases: []string{"dep"},
+	Short:   "Enable Dependabot features",
+	Long:    `Enable Dependency Graph, Alerts, and Security Updates.`,
+	Example: `
+  # Enable for a single repo
+  gh advanced-security enable dependabot owner/repo
+
+  # Enable for an entire organization
+  gh advanced-security enable dependabot my-org`,
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := services.GetEnforcerServices()
+
+		target, _ := services.GetTarget(cmd, args, "Target (Org or Owner/Repo)?")
+
+		if strings.Contains(target, "/") {
+			// === Single Repo Mode ===
+			parts := strings.Split(target, "/")
+			owner, repo := parts[0], parts[1]
+
+			fmt.Printf("Enabling Dependabot for %s/%s...\n", owner, repo)
+
+			// 1. Dependabot Alerts (PUT)
+			if err := svc.EnableDependabotAlerts(owner, repo); err != nil {
+				fmt.Printf("Error enabling alerts: %s\n", err)
+				os.Exit(1)
 			}
 
-			err := svc.BulkEnableSecretScanning(target)
+			// 2. Security Updates (PATCH)
+			if err := svc.EnableDependabotSecurityUpdates(owner, repo); err != nil {
+				fmt.Printf("Error enabling updates: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Success! (Dependency Graph is implied/enabled by Alerts)")
+
+		} else {
+			// Chama o método otimizado (O(1))
+			err := svc.BulkEnableDependabot(target)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -117,4 +181,6 @@ func init() {
 	rootCmd.AddCommand(enableCmd)
 	enableCmd.AddCommand(pushProtectionCmd)
 	enableCmd.AddCommand(secretScanningEnableCmd)
+	enableCmd.AddCommand(secretScanningNonProviderPatternsEnableCmd)
+	enableCmd.AddCommand(dependabotEnableCmd)
 }

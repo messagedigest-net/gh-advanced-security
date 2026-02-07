@@ -129,16 +129,20 @@ func (r *RepositoryServices) printRepoTable() error {
 		"Topics",
 		"AdvancedSecurity",
 		"SecretScanning",
-		"PushProtection",
+		"NonProviderPatterns",
 		"ValidityChecks",
+		"PushProtection",
+		"DependabotSecurityUpdates",
 	})
 
 	for _, repo := range r.repositories {
 		// Nil check for SecurityAndAnalysis to prevent panic on public repos
 		asStatus := "N/A"
 		ssStatus := "N/A"
+		npStatus := "N/A"
 		ppStatus := "N/A"
 		vcStatus := "N/A"
+		duStatus := "N/A"
 
 		if repo.SecurityAndAnalysis.AdvancedSecurity.Status != "" {
 			asStatus = repo.SecurityAndAnalysis.AdvancedSecurity.Status
@@ -146,11 +150,17 @@ func (r *RepositoryServices) printRepoTable() error {
 		if repo.SecurityAndAnalysis.SecretScanning.Status != "" {
 			ssStatus = repo.SecurityAndAnalysis.SecretScanning.Status
 		}
-		if repo.SecurityAndAnalysis.SecretScanningPushProtection.Status != "" {
-			ppStatus = repo.SecurityAndAnalysis.SecretScanningPushProtection.Status
+		if repo.SecurityAndAnalysis.SecretScanningNonProviderPatterns.Status != "" {
+			npStatus = repo.SecurityAndAnalysis.SecretScanningNonProviderPatterns.Status
 		}
 		if repo.SecurityAndAnalysis.SecretScanningValidityChecks.Status != "" {
 			vcStatus = repo.SecurityAndAnalysis.SecretScanningValidityChecks.Status
+		}
+		if repo.SecurityAndAnalysis.SecretScanningPushProtection.Status != "" {
+			ppStatus = repo.SecurityAndAnalysis.SecretScanningPushProtection.Status
+		}
+		if repo.SecurityAndAnalysis.DependabotSecurityUpdates.Status != "" {
+			duStatus = repo.SecurityAndAnalysis.DependabotSecurityUpdates.Status
 		}
 
 		tablePrinter.AddField(repo.FullName)
@@ -163,8 +173,10 @@ func (r *RepositoryServices) printRepoTable() error {
 		tablePrinter.AddField(strings.Join(repo.Topics, ","))
 		tablePrinter.AddField(asStatus)
 		tablePrinter.AddField(ssStatus)
-		tablePrinter.AddField(ppStatus)
+		tablePrinter.AddField(npStatus)
 		tablePrinter.AddField(vcStatus)
+		tablePrinter.AddField(ppStatus)
+		tablePrinter.AddField(duStatus)
 		tablePrinter.EndRow()
 	}
 
@@ -213,16 +225,28 @@ func (r *RepositoryServices) Show(name string, jsonOutput bool) error {
 		return status
 	}
 
+	tablePrinter.AddField("\tAdvanced Security")
+	tablePrinter.AddField(safeStatus(sas.AdvancedSecurity.Status))
+	tablePrinter.EndRow()
+
 	tablePrinter.AddField("\tSecret Scanning")
 	tablePrinter.AddField(safeStatus(sas.SecretScanning.Status))
+	tablePrinter.EndRow()
+
+	tablePrinter.AddField("\tNon Provider Paterns")
+	tablePrinter.AddField(safeStatus(sas.SecretScanningNonProviderPatterns.Status))
+	tablePrinter.EndRow()
+
+	tablePrinter.AddField("\tValidity Checks")
+	tablePrinter.AddField(safeStatus(sas.SecretScanningValidityChecks.Status))
 	tablePrinter.EndRow()
 
 	tablePrinter.AddField("\tPush Protection")
 	tablePrinter.AddField(safeStatus(sas.SecretScanningPushProtection.Status))
 	tablePrinter.EndRow()
 
-	tablePrinter.AddField("\tAdvanced Security")
-	tablePrinter.AddField(safeStatus(sas.AdvancedSecurity.Status))
+	tablePrinter.AddField("\tDependabot Security Updates")
+	tablePrinter.AddField(safeStatus(sas.DependabotSecurityUpdates.Status))
 	tablePrinter.EndRow()
 
 	return tablePrinter.Render()

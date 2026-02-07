@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/messagedigest-net/gh-advanced-security/model"
 )
@@ -46,8 +47,10 @@ func (o *OrganizationServices) List(jsonOutput bool, userPageSize int, fetchAll 
 			return err
 		}
 
+		enrichedOrgs := o.enrichOrgsInParallel(pageOrgs)
+
 		if jsonOutput {
-			o.organizations = append(o.organizations, pageOrgs...)
+			o.organizations = append(o.organizations, enrichedOrgs...)
 			if nextUrl == "" {
 				break
 			}
@@ -55,7 +58,7 @@ func (o *OrganizationServices) List(jsonOutput bool, userPageSize int, fetchAll 
 			continue
 		}
 
-		o.organizations = pageOrgs
+		o.organizations = enrichedOrgs
 		if err := o.printOrgTable(); err != nil {
 			return err
 		}
@@ -77,7 +80,45 @@ func (o *OrganizationServices) List(jsonOutput bool, userPageSize int, fetchAll 
 	if jsonOutput {
 		return jsonLister(o.organizations)
 	}
+
+	fmt.Println("* setting for new repositories")
 	return nil
+}
+
+// enrichOrgsInParallel pega uma lista de orgs "magras" e busca os detalhes completos de cada uma
+func (o *OrganizationServices) enrichOrgsInParallel(simpleOrgs []model.Organization) []model.Organization {
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	results := make([]model.Organization, len(simpleOrgs))
+
+	// Limitador de concorrência para não estourar rate limit
+	semaphore := make(chan struct{}, 5)
+
+	for i, simpleOrg := range simpleOrgs {
+		wg.Add(1)
+		go func(index int, name string) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // Adquire token
+			defer func() { <-semaphore }() // Libera token
+
+			// Busca detalhes completos: GET /orgs/{name}
+			fullOrg, err := o.Get(name)
+
+			mu.Lock()
+			if err == nil {
+				results[index] = *fullOrg
+			} else {
+				// Se falhar (ex: falta de permissão), mantém o objeto original (básico)
+				// ou loga o erro se tiver logger
+				results[index] = simpleOrgs[index]
+			}
+			mu.Unlock()
+		}(i, simpleOrg.Login)
+	}
+
+	wg.Wait()
+	return results
 }
 
 // Helper method to keep List clean (move your existing table logic here)
@@ -87,7 +128,16 @@ func (o *OrganizationServices) printOrgTable() error {
 		return err
 	}
 
-	tablePrinter.AddHeader([]string{"Org", "URL", "Adv Security", "Secret Scanning", "Push Protection"})
+	tablePrinter.AddHeader([]string{
+		"Org",
+		"URL",
+		"Adv Security*",
+		"Secret Scanning*",
+		"Push Protection*",
+		"Dep. Graph*",
+		"Dep. Alerts*",
+		"Dep. Updates*",
+	})
 
 	for _, i := range o.organizations {
 		tablePrinter.AddField(i.Login)
@@ -95,6 +145,9 @@ func (o *OrganizationServices) printOrgTable() error {
 		tablePrinter.AddField(enabledOrDisabled(i.AdvancedSecurityEnabledForNewRepositories))
 		tablePrinter.AddField(enabledOrDisabled(i.SecretScanningEnabledForNewRepositories))
 		tablePrinter.AddField(enabledOrDisabled(i.SecretScanningPushProtectionEnabledForNewRepositories))
+		tablePrinter.AddField(enabledOrDisabled(i.DependencyGraphEnabledForNewRepositories))
+		tablePrinter.AddField(enabledOrDisabled(i.DependabotAlertsEnabledForNewRepositories))
+		tablePrinter.AddField(enabledOrDisabled(i.DependabotSecurityUpdatesEnabledForNewRepositories))
 		tablePrinter.EndRow()
 	}
 	return tablePrinter.Render()
