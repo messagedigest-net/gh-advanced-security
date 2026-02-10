@@ -11,7 +11,6 @@ import (
 	"github.com/cli/go-gh/v2/pkg/tableprinter"
 	"github.com/cli/go-gh/v2/pkg/term"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/exp/maps"
 )
 
@@ -56,15 +55,13 @@ func GetPrompt() *prompter.Prompter {
 }
 
 func getTablePrinter() (tableprinter.TablePrinter, error) {
-	if tablePrinter == nil {
-		t := GetTerminal()
-		w, _, err := t.Size()
-		if err != nil {
-			return nil, err
-		}
-		tb := tableprinter.New(t.Out(), t.IsTerminalOutput(), w)
-		tablePrinter = &tb
+	t := GetTerminal()
+	w, _, err := t.Size()
+	if err != nil {
+		return nil, err
 	}
+	tb := tableprinter.New(t.Out(), t.IsTerminalOutput(), w)
+	tablePrinter = &tb
 	return *tablePrinter, nil
 }
 
@@ -127,11 +124,6 @@ func GetTarget(cmd *cobra.Command, args []string, message string) (string, *Glob
 		flags = GetGlobalFlags()
 	}
 
-	flags.JSON = viper.GetBool("json")
-	flags.User = viper.GetBool("user")
-	flags.All = viper.GetBool("all")
-	flags.PageSize = viper.GetInt("page")
-
 	return target, flags
 }
 
@@ -167,4 +159,51 @@ func GetOptimalPageSize(userSize int) int {
 	}
 
 	return size
+}
+
+// colorize applies ANSI color codes if terminal supports color
+func colorize(text, colorCode string) string {
+	t := GetTerminal()
+	if !t.IsColorEnabled() {
+		return text
+	}
+	return fmt.Sprintf("\x1b[%sm%s\x1b[0m", colorCode, text)
+}
+
+// SeverityWithIcon formats a severity string with an icon and color
+func SeverityWithIcon(sev string) string {
+	if sev == "" {
+		return "-"
+	}
+
+	s := strings.ToLower(sev)
+	switch s {
+	case "error", "high":
+		return colorize("❗ "+strings.ToUpper(sev), "31") // red
+	case "warning", "medium":
+		return colorize("⚠️ "+strings.Title(s), "33") // yellow
+	case "note", "low", "info":
+		return colorize("ℹ️ "+strings.Title(s), "36") // cyan
+	default:
+		return strings.Title(sev)
+	}
+}
+
+// StateColored returns state string colored for readability
+func StateColored(state string) string {
+	if state == "" {
+		return "-"
+	}
+
+	s := strings.ToLower(state)
+	switch s {
+	case "open":
+		return colorize(strings.Title(s), "32") // green
+	case "closed", "dismissed", "resolved":
+		return colorize(strings.Title(s), "90") // gray
+	case "fixed":
+		return colorize(strings.Title(s), "32") // green
+	default:
+		return strings.Title(s)
+	}
 }

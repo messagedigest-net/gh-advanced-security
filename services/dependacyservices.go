@@ -96,8 +96,8 @@ func (d *DependencyServices) printTable() error {
 
 	for _, alert := range d.alerts {
 		tp.AddField(fmt.Sprintf("%d", alert.Number))
-		tp.AddField(alert.State)
-		tp.AddField(alert.SecurityAdvisory.Severity)
+		tp.AddField(StateColored(alert.State))
+		tp.AddField(SeverityWithIcon(alert.SecurityAdvisory.Severity))
 		tp.AddField(alert.Dependency.Package.Name)
 
 		// Show CVE if available, otherwise GHSA

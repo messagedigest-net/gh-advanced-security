@@ -122,56 +122,55 @@ func (a *AlertServices) printCodeScanningTable() error {
         return err
     }
 
-    tp.AddHeader([]string{"ID", "State", "Tool", "Rule ID", "Description", "Created At"})
+		tp.AddHeader([]string{"ID", "State", "Severity", "Tool", "Rule ID", "Description", "Created At"})
 
-    for _, alert := range a.codeAlerts {
-        tp.AddField(fmt.Sprintf("%d", alert.Numer)) // Note: 'Numer' matches your existing model
-        tp.AddField(alert.State)
-        tp.AddField(alert.Tool.Name)
-        tp.AddField(alert.Rule.Id)
+		for _, alert := range a.codeAlerts {
+			tp.AddField(fmt.Sprintf("%d", alert.Numer)) // Note: 'Numer' matches your existing model
+			tp.AddField(StateColored(alert.State))
+			tp.AddField(SeverityWithIcon(alert.Rule.Severity))
+			tp.AddField(alert.Tool.Name)
+			tp.AddField(alert.Rule.Id)
 
-        // Truncate description if too long
-        desc := alert.Rule.Description
-        if len(desc) > 50 {
-            desc = desc[:47] + "..."
-        }
-        tp.AddField(desc)
-        tp.AddField(alert.CreatedAt)
-        tp.EndRow()
-    }
+			// Truncate description if too long
+			desc := alert.Rule.Description
+			if len(desc) > 50 {
+				desc = desc[:47] + "..."
+			}
+			tp.AddField(desc)
+			tp.AddField(alert.CreatedAt)
+			tp.EndRow()
+		}
 
-    return tp.Render()
+	return tp.Render()
 }
 
 // Helper to print Secret Scanning table
 func (a *AlertServices) printSecretScanningTable() error {
-    tp, err := getTablePrinter()
-    if err != nil {
-        return err
-    }
+	 tp, err := getTablePrinter()
+	 if err != nil {
+		 return err
+	 }
 
-    tp.AddHeader([]string{"ID", "State", "Secret Type", "Resolution", "Push Protection", "Created At"})
+	 tp.AddHeader([]string{"ID", "State", "Secret Type", "Resolution", "Push Protection", "Created At"})
 
-    for _, alert := range a.secretAlerts {
-        tp.AddField(fmt.Sprintf("%d", alert.Number))
-        tp.AddField(alert.State)
-        tp.AddField(alert.SecretTypeDisplayName)
+	 for _, alert := range a.secretAlerts {
+		 tp.AddField(fmt.Sprintf("%d", alert.Number))
+		 tp.AddField(StateColored(alert.State))
+		 tp.AddField(alert.SecretTypeDisplayName)
 
-        resolution := alert.Resolution
-        if resolution == "" {
-            resolution = "-"
-        }
-        tp.AddField(resolution)
+		 resolution := alert.Resolution
+		 if resolution == "" {
+			 resolution = "-"
+		 }
+		 tp.AddField(resolution)
 
-        tp.AddField(enabledOrDisabled(alert.PushProtectionBypassed))
-        tp.AddField(alert.CreatedAt)
-        tp.EndRow()
-    }
+		 tp.AddField(enabledOrDisabled(alert.PushProtectionBypassed))
+		 tp.AddField(alert.CreatedAt)
+		 tp.EndRow()
+	 }
 
-    return tp.Render()
+	 return tp.Render()
 }
-
-// In services/alertservices.go
 
 // ListPushProtectionBypasses fetches bypass requests
 func (a *AlertServices) ListPushProtectionBypasses(org, repo string, jsonOutput bool, userPageSize int, fetchAll bool) error {
