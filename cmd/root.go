@@ -23,7 +23,11 @@ var rootCmd = &cobra.Command{
 var prompt *prompter.Prompter
 
 func init() {
+
   prompt = services.GetPrompt()
+
+  // Inicializa o Config quando o comando for executado
+  cobra.OnInitialize(services.InitConfig)
 
   // Delegate Flag Definition to the Service
   services.DefineGlobalFlags(rootCmd)

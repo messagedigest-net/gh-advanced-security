@@ -11,6 +11,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/tableprinter"
 	"github.com/cli/go-gh/v2/pkg/term"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/exp/maps"
 )
 
@@ -103,8 +104,8 @@ func ChooseSubCommand(subCmds []*cobra.Command, args []string, promptTitle strin
 // Returns: target(string), flags(GlobalFlags)
 func GetTarget(cmd *cobra.Command, args []string, message string) (string, *GlobalFlags) {
 	var flags *GlobalFlags
-
 	var target string
+
 	if len(args) < 1 {
 		GetPrompt()
 		response, err := prompt.Input(message, "")
@@ -125,6 +126,11 @@ func GetTarget(cmd *cobra.Command, args []string, message string) (string, *Glob
 		target = args[0]
 		flags = GetGlobalFlags()
 	}
+
+	flags.JSON = viper.GetBool("json")
+	flags.User = viper.GetBool("user")
+	flags.All = viper.GetBool("all")
+	flags.PageSize = viper.GetInt("page")
 
 	return target, flags
 }
