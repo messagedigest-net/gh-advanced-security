@@ -1,7 +1,7 @@
 package model
 
 type UpdateCodeScanningDefaultSetup struct {
-	State      string   `json:,omitempty`
-	QuerySuite string   `json:"query_suite",omitempty`
-	Languages  []string `json:,omitempty`
+	State      string   `json:"state,omitempty"`
+	QuerySuite string   `json:"query_suite,omitempty"`
+	Languages  []string `json:"languages,omitempty"`
 }

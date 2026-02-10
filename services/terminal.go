@@ -15,9 +15,14 @@ import (
 )
 
 var (
-	prompt       *prompter.Prompter
-	terminal     *term.Term
-	tablePrinter *tableprinter.TablePrinter
+	prompt   *prompter.Prompter
+	terminal *term.Term
+
+	// testTablePrinter is a test-only hook. When non-nil it should return a
+	// fresh tableprinter for the caller and a boolean indicating it was
+	// provided. This variable is set from a file compiled only with the
+	// `test` build tag so production builds do not include test helpers.
+	testTablePrinter func() (tableprinter.TablePrinter, bool)
 )
 
 func GetTerminal() *term.Term {
@@ -55,14 +60,19 @@ func GetPrompt() *prompter.Prompter {
 }
 
 func getTablePrinter() (tableprinter.TablePrinter, error) {
+	if testTablePrinter != nil {
+		if tp, ok := testTablePrinter(); ok {
+			return tp, nil
+		}
+	}
+
 	t := GetTerminal()
 	w, _, err := t.Size()
 	if err != nil {
 		return nil, err
 	}
 	tb := tableprinter.New(t.Out(), t.IsTerminalOutput(), w)
-	tablePrinter = &tb
-	return *tablePrinter, nil
+	return tb, nil
 }
 
 func enabledOrDisabled(b bool) string {
