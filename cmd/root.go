@@ -1,21 +1,21 @@
 package cmd
 
 import (
-  "fmt"
-  "os"
+	"fmt"
+	"os"
 
-  "github.com/cli/go-gh/v2/pkg/prompter"
-  "github.com/messagedigest-net/gh-advanced-security/services"
-  "github.com/spf13/cobra"
+	"github.com/cli/go-gh/v2/pkg/prompter"
+	"github.com/messagedigest-net/gh-advanced-security/services"
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-  Use:   "advanced-security",
-  Short: "GitHub CLI extension to manage GitHub Advanced Security features",
-  Long:  `GitHub CLI extension to manage GitHub Advanced Security features...`,
-  Run: func(cmd *cobra.Command, args []string) {
-    services.ChooseSubCommand(cmd.Commands(), args, "What do you want to do?")
-  },
+	Use:   "advanced-security",
+	Short: "GitHub CLI extension to manage GitHub Advanced Security features",
+	Long:  `GitHub CLI extension to manage GitHub Advanced Security features...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		services.ChooseSubCommand(cmd.Commands(), args, "What do you want to do?")
+	},
 }
 
 // Global prompter variable can stay if used widely,
@@ -24,18 +24,18 @@ var prompt *prompter.Prompter
 
 func init() {
 
-  prompt = services.GetPrompt()
+	prompt = services.GetPrompt()
 
-  // Inicializa o Config quando o comando for executado
-  cobra.OnInitialize(services.InitConfig)
+	// Inicializa o Config quando o comando for executado
+	cobra.OnInitialize(services.InitConfig)
 
-  // Delegate Flag Definition to the Service
-  services.DefineGlobalFlags(rootCmd)
+	// Delegate Flag Definition to the Service
+	services.DefineGlobalFlags(rootCmd)
 }
 
 func Execute() {
-  if err := rootCmd.Execute(); err != nil {
-    fmt.Println(err)
-    os.Exit(1)
-  }
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
